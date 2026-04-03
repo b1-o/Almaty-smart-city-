@@ -24,5 +24,5 @@
 ## 📦 Установка и запуск
 
 1. **Клонируйте репозиторий:**
-     git clone [https://github.com/your-repo/BRM-ai.git](https://github.com/your-repo/BRM-ai.git)
+     git clone [https://github.com/b1-o/Almaty-smart-city-](https://github.com/b1-o/Almaty-smart-city-)
    cd BRM-ai
