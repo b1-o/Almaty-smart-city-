@@ -52,3 +52,16 @@ venv\Scripts\activate
 
 python3 -m venv venv
 source venv/bin/activate
+
+3. Установите необходимые библиотеки:
+
+Поскольку файл requirements.txt уже находится в репозитории, просто выполните команду:
+Bash
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+4. Запустите платформу:
+Bash
+
+streamlit run aka.py
