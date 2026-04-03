@@ -16,36 +16,6 @@ BRM AI OS — концептуальная аналитическая панел
     • Аналитика: Pandas, NumPy
     • Стиль: Custom CSS (Font: Orbitron, Glitch effects)
 
-📦 Как запустить у себя
-Выполните эти шаги последовательно, чтобы проект заработал корректно:
-1. Клонируйте репозиторий
-Bash
-git clone https://github.com/b1-o/Almaty-smart-city-
-cd Almaty-smart-city-
-2. Настройте виртуальное окружение
-Это необходимо, чтобы библиотеки проекта не конфликтовали с системными.
-Для Windows:
-Bash
-python -m venv venv
-venv\Scripts\activate
-Для macOS / Linux:
-Bash
-python3 -m venv venv
-source venv/bin/activate
-3. Установите зависимости
-Bash
-pip install --upgrade pip
-pip install -r requirements.txt
-4. Запустите платформу
-Bash
-streamlit run aka.py
-
-📂 Структура проекта
-    • aka.py — Основной файл приложения.
-    • requirements.txt — Список необходимых библиотек.
-    • README.md — Документация проекта.
-Status: 🟢 System Nominal | Node: Almaty-01 © 2026 Almaty Smart City Solutions | Powered by Burmolda AI EngineВот объединенный README.md файл с сохранением всей информации в одном документе:
-
 ```markdown
 # 🦅 BRM AI OS v4.0 | Almaty Smart City Dashboard
 
