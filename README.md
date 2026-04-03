@@ -37,9 +37,9 @@ git clone [https://github.com/b1-o/Almaty-smart-city-](https://github.com/b1-o/A
 cd Almaty-smart-city-
 ## 2. Создайте и активируйте виртуальное окружение:
 
-Это необходимо, чтобы библиотеки проекта не конфликтовали с системными.
+###Это необходимо, чтобы библиотеки проекта не конфликтовали с системными.
 
-   ##Для Windows:
+   ###Для Windows:
 
 ```bash
 
@@ -53,6 +53,27 @@ venv\Scripts\activate
 python3 -m venv venv
 source venv/bin/activate
 
+###3. Установите необходимые библиотеки:
+
+###Поскольку файл requirements.txt уже находится в репозитории, просто выполните команду:
+```bash
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+###4. Запустите платформу:
+```bash3. Установите необходимые библиотеки:
+
+Поскольку файл requirements.txt уже находится в репозитории, просто выполните команду:
+Bash
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+4. Запустите платформу:
+Bash
+
+streamlit run aka.py
 3. Установите необходимые библиотеки:
 
 Поскольку файл requirements.txt уже находится в репозитории, просто выполните команду:
@@ -63,5 +84,20 @@ pip install -r requirements.txt
 
 4. Запустите платформу:
 Bash
+
+streamlit run aka.py
+3. Установите необходимые библиотеки:
+
+Поскольку файл requirements.txt уже находится в репозитории, просто выполните команду:
+Bash
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+4. Запустите платформу:
+Bash
+
+streamlit run aka.py
+
 
 streamlit run aka.py
