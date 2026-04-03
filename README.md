@@ -35,3 +35,20 @@
 ```bash
 git clone [https://github.com/b1-o/Almaty-smart-city-](https://github.com/b1-o/Almaty-smart-city-)
 cd Almaty-smart-city-
+## 2. Создайте и активируйте виртуальное окружение:
+
+Это необходимо, чтобы библиотеки проекта не конфликтовали с системными.
+
+   ##Для Windows:
+
+```bash
+
+python -m venv venv
+venv\Scripts\activate
+
+    ##Для macOS / Linux:
+
+```bash
+
+python3 -m venv venv
+source venv/bin/activate
