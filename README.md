@@ -1,28 +1,37 @@
 # 🦅 BRM AI OS v4.0 | Almaty Smart City Dashboard
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-FF4B4B.svg)
-![License](https://img.shields.io/badge/License-Proprietary-black.svg)
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg?style=for-the-badge&logo=python)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-FF4B4B.svg?style=for-the-badge&logo=streamlit)
+![License](https://img.shields.io/badge/License-Proprietary-black.svg?style=for-the-badge)
 
 ## 📝 Описание
-**BRM AI OS** — это концептуальная аналитическая панель управления городскими процессами Алматы. Система интегрирует данные экологического мониторинга, нагрузки на энергосети, дорожного трафика и происшествий в единый футуристичный интерфейс.
+**BRM AI OS** — концептуальная аналитическая панель управления городскими процессами Алматы. Система интегрирует данные эко-мониторинга, нагрузки на энергосети и дорожного трафика в единый футуристичный интерфейс с использованием Glassmorphism и CSS-анимаций.
+
+---
 
 ## 🚀 Основные возможности
-* **Eco-Monitoring:** Отслеживание индексов AQI, концентрации PM2.5 и NO2 по районам города.
-* **Grid Control:** Мониторинг стабильности напряжения и нагрузки на подстанции (ТЭЦ/ГЭС).
-* **Live Traffic Map:** Интерактивная карта на базе Folium с отображением ДТП и тепловой картой загрязнения.
-* **AI Analytics:** Автоматическая генерация отчетов об аномалиях и предложения по оптимизации ресурсов.
-* **Multilingual:** Полная поддержка русского, казахского и английского языков.
+* **🍀 Eco-Monitoring:** Мониторинг индексов AQI, PM2.5 и NO2 в реальном времени.
+* **⚡ Grid Control:** Анализ нагрузки на подстанции и стабильности напряжения.
+* **📍 Live Map:** Интерактивная карта ДТП и тепловая карта загрязнения (Folium).
+* **🧠 AI Analytics:** Ядро системы для обнаружения аномалий и генерации отчетов.
+* **🌐 Multilingual:** Интерфейс на казахском (KZ), русском (RU) и английском (EN) языках.
+
+---
 
 ## 🛠 Технологический стек
 * **Frontend/Backend:** [Streamlit](https://streamlit.io/)
-* **Визуализация:** Plotly Express, Graph Objects
+* **Визуализация:** Plotly (Express & Graph Objects)
 * **Геоданные:** Folium, Streamlit-Folium
 * **Аналитика:** Pandas, NumPy
-* **Стиль:** Custom CSS (Orbitron Font, Glassmorphism, Animations)
+* **Стиль:** Custom CSS (Font: Orbitron, Glitch effects)
 
-## 📦 Установка и запуск
+---
 
-1. **Клонируйте репозиторий:**
-     git clone [https://github.com/b1-o/Almaty-smart-city-](https://github.com/b1-o/Almaty-smart-city-)
-   cd BRM-ai
+## 📦 Как запустить у себя
+
+Выполните эти шаги последовательно, чтобы проект заработал со всеми библиотеками:
+
+### 1. Клонируйте репозиторий:
+```bash
+git clone [https://github.com/b1-o/Almaty-smart-city-](https://github.com/b1-o/Almaty-smart-city-)
+cd Almaty-smart-city-
