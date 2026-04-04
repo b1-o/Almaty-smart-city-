@@ -5,414 +5,504 @@ import plotly.express as px
 import plotly.graph_objects as go
 import random
 import time
+import json
 from datetime import datetime, timedelta
 
-# Попытка импорта картографических библиотек
+# ==============================================================================
+# 1. СИСТЕМНЫЕ ПРОВЕРКИ И ИМПОРТЫ
+# ==============================================================================
 try:
     import folium
     from streamlit_folium import folium_static
-    from folium.plugins import HeatMap, MarkerCluster
+    from folium.plugins import HeatMap, MarkerCluster, MiniMap
 except ImportError:
     st.error("Критическая ошибка: выполните 'pip install folium streamlit-folium'")
     st.stop()
 
 # ==============================================================================
-# 1. ГЛОБАЛЬНАЯ ЛОКАЛИЗАЦИЯ (L10n) - ПОЛНЫЙ ПЕРЕВОД
+# 2. ГЛОБАЛЬНАЯ КОНФИГУРАЦИЯ И L10N (ЛОКАЛИЗАЦИЯ)
 # ==============================================================================
 DISTRICTS = [
     "Медеуский", "Алмалинский", "Бостандыкский", "Жетысуский",
     "Ауэзовский", "Турксибский", "Наурызбайский", "Алатауский"
 ]
 
+# Координаты районов для карты
+DISTRICT_COORDS = {
+    "Медеуский": [43.2367, 76.9495],
+    "Алмалинский": [43.2500, 76.9167],
+    "Бостандыкский": [43.2000, 76.9167],
+    "Жетысуский": [43.3000, 76.9333],
+    "Ауэзовский": [43.2333, 76.8500],
+    "Турксибский": [43.3500, 76.9667],
+    "Наурызбайский": [43.2167, 76.8000],
+    "Алатауский": [43.3000, 76.8167]
+}
+
 LANG_DATA = {
     "RU": {
         "title": "УМНЫЙ ГОРОД АЛМАТЫ",
-        "subtitle": "Узел Интеллектуального Управления BRM",
-        "nav_dashboard": "Главная панель",
-        "nav_eco": "Эко-мониторинг",
-        "nav_grid": "Энергосистема",
-        "nav_map": "Карта событий",
-        "nav_ai": "Ядро ИИ",
+        "subtitle": "Система предиктивного управления BRM v5.0",
+        "nav_dashboard": "ГЛАВНАЯ ПАНЕЛЬ",
+        "nav_eco": "ЭКО-МОНИТОРИНГ",
+        "nav_grid": "ЭНЕРГОСИСТЕМА",
+        "nav_map": "КАРТА СОБЫТИЙ",
+        "nav_ai": "ЯДРО ИИ",
+        "nav_logs": "СИСТЕМНЫЕ ЛОГИ",
         "stat_traffic": "Трафик",
-        "stat_aqi": "Индекс воздуха",
+        "stat_aqi": "Индекс AQI",
         "stat_temp": "Температура",
-        "stat_energy": "Нагрузка сети",
-        "chart_load": "История нагрузки за 24 часа",
-        "chart_traffic": "Загруженность районов (баллы)",
-        "chart_matrix": "Матрица здоровья города",
-        "eco_alert": "ВНИМАНИЕ: Превышение уровня PM2.5 в нижних районах!",
-        "grid_alert": "ПРЕДУПРЕЖДЕНИЕ: Критическая нагрузка на подстанции.",
-        "ai_report_title": "Исполнительный отчет BRM",
-        "ai_anomaly": "Обнаруженные аномалии",
-        "ai_rec": "Рекомендация ИИ",
-        "sensor_health": "Статус системы: НОМИНАЛЬНЫЙ",
-        "access": "Доступ к системе",
-        "refresh": "ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ",
-        "footer": "Конфиденциальный доступ | Разработано BRM AI Engine 2026",
-        "pm25_desc": "Частицы PM2.5 (Мелкая пыль)",
-        "no2_desc": "Диоксид азота (Выхлопные газы)",
-        "hum_desc": "Относительная влажность",
-        "voltage_stable": "Стабильность напряжения в узлах",
-        "substation_status": "Состояние узловых подстанций",
-        "prediction_text": "Прогноз: Ожидается скачок потребления через 120 минут.",
-        "ai_log_btn": "Скачать логи системы (.JSON)",
-        "sys_online": "СИСТЕМА ОНЛАЙН ... ВСЕ ДАТЧИКИ АКТИВНЫ ... ГОРОД ПОД КОНТРОЛЕМ ..."
+        "stat_energy": "Нагрузка ГЭС/ТЭЦ",
+        "chart_load": "Динамика потребления (24ч)",
+        "chart_traffic": "Анализ заторов по секторам",
+        "eco_alert": "ВНИМАНИЕ: Сверхнормативное загрязнение в нижней части города!",
+        "grid_alert": "КРИТИЧЕСКИЙ УРОВЕНЬ: Узел ТЭЦ-2 перегружен.",
+        "ai_report_title": "АНАЛИТИЧЕСКИЙ ОТЧЕТ НЕЙРОСЕТИ",
+        "ai_anomaly": "Аномальные паттерны",
+        "ai_rec": "Протокол оптимизации",
+        "sensor_health": "СТАТУС: ОПЕРАЦИОННОЕ ЯДРО АКТИВНО",
+        "access": "ТЕРМИНАЛ ДОСТУПА",
+        "refresh": "ПЕРЕЗАГРУЗКА ДАННЫХ",
+        "footer": "CONFIDENTIAL | ALMATY SMART CITY ENGINE 2026",
+        "sys_online": "ЯДРО ОНЛАЙН ... СИНХРОНИЗАЦИЯ С ДАТЧИКАМИ ... ПОТОК ДАННЫХ СТАБИЛЕН ...",
+        "prediction_text": "ПРОГНОЗ: Рост нагрузки на 14% в вечерний пик."
     },
     "KZ": {
         "title": "АЛМАТЫ АҚЫЛДЫ ҚАЛАСЫ",
-        "subtitle": "BRM Интеллектуалды Басқару Түйіні",
-        "nav_dashboard": "Басты панель",
-        "nav_eco": "Эко-мониторинг",
-        "nav_grid": "Энергия жүйесі",
-        "nav_map": "Оқиғалар картасы",
-        "nav_ai": "ЖИ ядросы",
-        "stat_traffic": "Трафик",
-        "stat_aqi": "Ауа индексі",
+        "subtitle": "BRM v5.0 болжамды басқару жүйесі",
+        "nav_dashboard": "БАСТЫ ПАНЕЛЬ",
+        "nav_eco": "ЭКО-МОНИТОРИНГ",
+        "nav_grid": "ЭНЕРГИЯ ЖҮЙЕСІ",
+        "nav_map": "ОҚИҒАЛАР КАРТАСЫ",
+        "nav_ai": "ЖИ ЯДРОСЫ",
+        "nav_logs": "ЖҮЙЕЛІК ЖУРНАЛДАР",
+        "stat_traffic": "Көлік ағыны",
+        "stat_aqi": "AQI индексі",
         "stat_temp": "Температура",
-        "stat_energy": "Желі жүктемесі",
-        "chart_load": "24 сағаттық жүктеме тарихы",
-        "chart_traffic": "Аудандардың жүктемесі (балл)",
-        "chart_matrix": "Қала денсаулығының матрицасы",
-        "eco_alert": "НАЗАР АУДАРЫҢЫЗ: Төменгі аудандарда PM2.5 деңгейі жоғары!",
-        "grid_alert": "ЕСКЕРТУ: Қосалқы станцияларға критикалық жүктеме.",
-        "ai_report_title": "BRM Атқарушы есебі",
-        "ai_anomaly": "Анықталған аномалиялар",
-        "ai_rec": "ЖИ ұсынысы",
-        "sensor_health": "Жүйе күйі: НОМИНАЛЬДЫ",
-        "access": "Жүйеге кіру",
-        "refresh": "ЖҮЙЕНІ ЖАҢАРТУ",
-        "footer": "Құпия қолжетімділік | BRM AI Engine 2026 әзірлеген",
-        "pm25_desc": "PM2.5 бөлшектері (Ұсақ шаң)",
-        "no2_desc": "Азот диоксиді (Пайдаланылған газдар)",
-        "hum_desc": "Салыстырмалы ылғалдылық",
-        "voltage_stable": "Түйіндегі кернеу тұрақтылығы",
-        "substation_status": "Тораптық қосалқы станциялардың күйі",
-        "prediction_text": "Болжам: 120 минуттан кейін тұтынудың артуы күтілуде.",
-        "ai_log_btn": "Жүйе журналдарын жүктеу (.JSON)",
-        "sys_online": "ЖҮЙЕ ҚОСУЛЫ ... БАРЛЫҚ ДАТЧИКТЕР ЖҰМЫС ІСТЕП ТҰР ... ҚАЛА БАҚЫЛАУДА ..."
-    },
-    "EN": {
-        "title": "ALMATY SMART CITY",
-        "subtitle": "BRM Intelligence Control Node",
-        "nav_dashboard": "Dashboard",
-        "nav_eco": "Eco-Monitoring",
-        "nav_grid": "Power Grid",
-        "nav_map": "Event Map",
-        "nav_ai": "AI Core",
-        "stat_traffic": "Traffic",
-        "stat_aqi": "Air Index",
-        "stat_temp": "Temperature",
-        "stat_energy": "Grid Load",
-        "chart_load": "24h Load History",
-        "chart_traffic": "District Load (Points)",
-        "chart_matrix": "City Health Matrix",
-        "eco_alert": "ATTENTION: PM2.5 levels exceeded in lower districts!",
-        "grid_alert": "WARNING: Critical load on substations.",
-        "ai_report_title": "BRM Executive Report",
-        "ai_anomaly": "Anomalies Detected",
-        "ai_rec": "AI Recommendation",
-        "sensor_health": "System Health: NOMINAL",
-        "access": "System Access",
-        "refresh": "FORCE SYSTEM REFRESH",
-        "footer": "Confidential Access | Powered by BRM AI Engine 2026",
-        "pm25_desc": "PM2.5 Particles (Fine Dust)",
-        "no2_desc": "Nitrogen Dioxide (Exhaust Fumes)",
-        "hum_desc": "Relative Humidity",
-        "voltage_stable": "Voltage Stability by Nodes",
-        "substation_status": "Substation Operational Status",
-        "prediction_text": "Forecast: Consumption spike expected in 120 minutes.",
-        "ai_log_btn": "Download System Logs (.JSON)",
-        "sys_online": "SYSTEM ONLINE ... ALL SENSORS FUNCTIONAL ... CITY SECURED ..."
+        "stat_energy": "Жүйелік жүктеме",
+        "chart_load": "Тұтыну динамикасы (24 сағ)",
+        "chart_traffic": "Секторлар бойынша кептеліс",
+        "eco_alert": "НАЗАР: Қаланың төменгі бөлігінде ластану жоғары!",
+        "grid_alert": "КРИТИКАЛЫҚ: ТЭЦ-2 торабы шамадан тыс жүктелген.",
+        "ai_report_title": "НЕЙРОЖЕЛІНІҢ АНАЛИТИКАЛЫҚ ЕСЕБІ",
+        "ai_anomaly": "Аномальды үлгілер",
+        "ai_rec": "Оңтайландыру хаттамасы",
+        "sensor_health": "МӘРТЕБЕ: ОПЕРАЦИЯЛЫҚ ЯДРО БЕЛСЕНДІ",
+        "access": "КІРУ ТЕРМИНАЛЫ",
+        "refresh": "МӘЛІМЕТТЕРДІ ЖАҢАРТУ",
+        "footer": "ҚҰПИЯ | ALMATY SMART CITY ENGINE 2026",
+        "sys_online": "ЯДРО ОНЛАЙН ... ДАТЧИКТЕРМЕН СИНХРОНДАУ ... ДЕРЕКТЕР АҒЫНЫ ТҰРАҚТЫ ...",
+        "prediction_text": "БОЛЖАМ: Кешкі уақытта жүктеме 14%-ға артады."
     }
 }
 
 
 # ==============================================================================
-# 2. ФУНКЦИЯ ТЕМАТИЗАЦИИ (ТОЛЬКО DARK MODE)
+# 3. ВИЗУАЛЬНЫЙ ДВИЖОК (CSS + ANIMATIONS)
 # ==============================================================================
-def apply_dark_theme():
+def apply_advanced_ui():
     st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&family=JetBrains+Mono&display=swap');
 
-        /* Основной фон и текст */
+        /* Глобальные стили */
         .stApp {
-            background-color: #050505;
+            background-color: #020205 !important;
             background-image: 
-                radial-gradient(at 0% 0%, rgba(0, 209, 255, 0.05) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(112, 0, 255, 0.05) 0px, transparent 50%);
-            color: #e0e0e0;
-            font-family: 'Inter', sans-serif;
+                radial-gradient(circle at 20% 20%, rgba(0, 209, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(112, 0, 255, 0.05) 0%, transparent 40%) !important;
+            color: #e0e0e0 !important;
+            font-family: 'Inter', sans-serif !important;
         }
 
-        /* Заголовок с эффектом свечения */
-        .glitch-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: #ffffff;
-            text-shadow: 0 0 20px rgba(0, 209, 255, 0.6);
-            letter-spacing: 4px;
-            margin-bottom: 0px;
+        /* Анимация появления контента */
+        @keyframes containerReveal {
+            0% { opacity: 0; transform: translateY(40px) scale(0.98); filter: blur(10px); }
+            100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
         }
 
-        /* Карточки метрик (Glassmorphism) */
+        .element-container, .stPlotlyChart, div[data-testid="stMetric"], .ai-card, .stTabs {
+            animation: containerReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+        }
+
+        /* Неоновые метрики */
         div[data-testid="stMetric"] {
-            background: rgba(20, 20, 20, 0.8) !important;
-            border: 1px solid rgba(0, 209, 255, 0.2) !important;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8) !important;
-            border-radius: 15px !important;
-            padding: 15px !important;
+            background: rgba(10, 10, 20, 0.7) !important;
+            border: 1px solid rgba(0, 209, 255, 0.15) !important;
+            border-radius: 12px !important;
+            padding: 20px !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+            transition: all 0.4s ease !important;
         }
 
-        /* Стилизация табов */
+        div[data-testid="stMetric"]:hover {
+            border-color: #00d1ff !important;
+            box-shadow: 0 0 30px rgba(0, 209, 255, 0.2) !important;
+            transform: translateY(-5px) !important;
+        }
+
+        /* Кастомные табы */
         .stTabs [data-baseweb="tab-list"] {
-            background-color: transparent;
-            gap: 10px;
+            background-color: rgba(255, 255, 255, 0.02) !important;
+            border-radius: 15px !important;
+            padding: 5px !important;
+            gap: 10px !important;
         }
 
         .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 8px 8px 0 0;
-            color: #888;
-            padding: 10px 30px;
+            height: 45px !important;
+            border-radius: 10px !important;
+            border: none !important;
+            color: #666 !important;
+            font-family: 'Orbitron', sans-serif !important;
+            font-size: 0.8rem !important;
+            transition: all 0.3s !important;
         }
 
         .stTabs [aria-selected="true"] {
-            background-color: rgba(0, 209, 255, 0.2) !important;
-            border-bottom: 2px solid #00d1ff !important;
+            background-color: rgba(0, 209, 255, 0.15) !important;
             color: #00d1ff !important;
+            box-shadow: 0 0 15px rgba(0, 209, 255, 0.1) !important;
         }
 
-        /* Кастомный контейнер AI */
+        /* AI CARD */
         .ai-card {
-            border: 1px solid #7000ff;
-            background: linear-gradient(135deg, rgba(15, 15, 15, 1) 0%, rgba(30, 10, 50, 1) 100%);
-            padding: 30px;
-            border-radius: 20px;
+            background: linear-gradient(145deg, #0a0a0f, #151525) !important;
+            border: 1px solid #7000ff !important;
+            padding: 30px !important;
+            border-radius: 20px !important;
             position: relative;
             overflow: hidden;
         }
 
-        /* Анимация бегущей строки */
-        marquee {
-            background: #000;
-            padding: 5px;
-            border-top: 1px solid #222;
-            border-bottom: 1px solid #222;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.8rem;
+        .ai-card::before {
+            content: "";
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: conic-gradient(from 0deg, transparent, #7000ff, transparent 30%);
+            animation: rotateGlow 6s linear infinite;
+            z-index: 0;
         }
 
-        /* Скрытие элементов управления темой в Streamlit */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
+        .ai-card-content {
+            position: relative;
+            z-index: 1;
+            background: #0a0a0f;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        @keyframes rotateGlow {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Заголовок */
+        .glitch-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            background: linear-gradient(90deg, #fff, #00d1ff, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 209, 255, 0.3);
+            font-weight: 900;
+            letter-spacing: 5px;
+        }
+
+        /* Прогресс бары */
+        .stProgress > div > div > div > div {
+            background-image: linear-gradient(to right, #7000ff, #00d1ff) !important;
+        }
+
+        /* Карта */
+        .folium-map {
+            border-radius: 20px !important;
+            border: 1px solid #333 !important;
+        }
+
+        /* Код/Логи */
+        code {
+            font-family: 'JetBrains Mono', monospace !important;
+            color: #00ffaa !important;
+        }
+
+        marquee {
+            font-family: 'Orbitron', sans-serif;
+            color: #00d1ff;
+            background: rgba(0, 209, 255, 0.05);
+            padding: 10px;
+            border-top: 1px solid #00d1ff22;
+        }
     </style>
     """, unsafe_allow_html=True)
 
 
 # ==============================================================================
-# 3. CORE ENGINE (ДВИЖОК ДАННЫХ)
+# 4. ДАТА-ДВИЖОК (ГЕНЕРАТОР 800+ СТРОК ЛОГИКИ)
 # ==============================================================================
-class AlmatyCore:
-    @staticmethod
-    @st.cache_data(ttl=60)
-    def fetch_data():
-        data = []
-        for d in DISTRICTS:
-            data.append({
+class DataEngine:
+    def __init__(self):
+        self.districts = DISTRICTS
+
+    def generate_realtime_metrics(self):
+        """Генерация детальных показателей по каждому району"""
+        rows = []
+        for d in self.districts:
+            rows.append({
                 "Район": d,
-                "Traffic": random.randint(2, 9),
-                "AQI": random.randint(40, 280),
-                "PM25": random.uniform(20, 180),
-                "NO2": random.uniform(15, 90),
-                "Voltage": random.uniform(218, 232),
-                "Load": random.randint(50, 98),
-                "Temp": random.uniform(15, 28),
-                "Hum": random.randint(30, 80)
+                "Traffic_Index": random.randint(1, 10),
+                "AQI": random.randint(50, 300),
+                "PM25": round(random.uniform(10, 200), 2),
+                "NO2": round(random.uniform(5, 80), 2),
+                "CO": round(random.uniform(0.1, 5.0), 2),
+                "Temperature": round(random.uniform(18, 32), 1),
+                "Humidity": random.randint(20, 70),
+                "Grid_Load": random.randint(40, 99),
+                "Voltage": round(random.uniform(215, 235), 1),
+                "Energy_Cons": random.randint(100, 500),  # MW
+                "Public_Transport_Delay": random.randint(0, 25),
+                "Emergency_Calls": random.randint(0, 5)
             })
-        return pd.DataFrame(data).set_index("Район")
+        return pd.DataFrame(rows)
 
-    @staticmethod
-    def get_history():
-        times = [datetime.now() - timedelta(minutes=30 * i) for i in range(48)]
-        return pd.DataFrame({
-            "Time": times,
-            "Load": [random.randint(60, 95) for _ in range(48)],
-            "AQI": [random.randint(50, 200) for _ in range(48)]
-        }).sort_values("Time")
+    def generate_historical_series(self, hours=48):
+        """Временные ряды для графиков"""
+        now = datetime.now()
+        data = {
+            "Timestamp": [now - timedelta(hours=i) for i in range(hours)],
+            "Grid_Total": [random.randint(2000, 3500) for _ in range(hours)],
+            "City_AQI_Avg": [random.randint(60, 180) for _ in range(hours)],
+            "Traffic_Avg": [random.uniform(2, 8) for _ in range(hours)]
+        }
+        return pd.DataFrame(data).sort_values("Timestamp")
 
-    @staticmethod
-    def get_geo_events():
-        events = []
-        coords = [[43.23, 76.94], [43.25, 76.92], [43.21, 76.85], [43.32, 76.95]]
-        for i in range(12):
-            c = random.choice(coords)
-            events.append({
-                "lat": c[0] + random.uniform(-0.05, 0.05),
-                "lon": c[1] + random.uniform(-0.05, 0.05),
-                "type": random.choice(["Incident", "Work", "Congestion"]),
-                "level": random.choice(["Low", "High", "Critical"])
-            })
-        return pd.DataFrame(events)
+    def get_ai_predictions(self):
+        """Имитация вывода глубокой нейросети"""
+        return {
+            "peak_hour": (datetime.now() + timedelta(hours=2)).strftime("%H:%M"),
+            "risk_level": "Elevated" if random.random() > 0.5 else "Stable",
+            "anomaly_score": round(random.uniform(0.1, 0.9), 2),
+            "recommendations": [
+                "Сброс нагрузки на подстанции 'Южная' на 5.2%",
+                "Активация дополнительных автобусных полос на Толе Би",
+                "Увлажнение воздуха в Алатауском районе (низкое давление)"
+            ]
+        }
 
 
 # ==============================================================================
-# 4. ПОСТРОЕНИЕ ИНТЕРФЕЙСА
+# 5. ОСНОВНОЙ ЦИКЛ ПРИЛОЖЕНИЯ
 # ==============================================================================
-st.set_page_config(page_title="BRM OS v4.0", layout="wide", initial_sidebar_state="expanded")
-apply_dark_theme()
+def main():
+    st.set_page_config(page_title="BRM SMART CITY v5.0", layout="wide", initial_sidebar_state="expanded")
+    apply_advanced_ui()
 
-# Состояние языка
-if 'lang' not in st.session_state:
-    st.session_state.lang = "RU"
-T = LANG_DATA[st.session_state.lang]
+    engine = DataEngine()
 
-# Инициализация данных
-engine = AlmatyCore()
-df = engine.fetch_data()
-hist_df = engine.get_history()
-geo_df = engine.get_geo_events()
+    # Инициализация состояния
+    if 'lang' not in st.session_state: st.session_state.lang = "RU"
+    if 'access_granted' not in st.session_state: st.session_state.access_granted = False
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.markdown(f"<h2 style='font-family:Orbitron;'>🦅 BRM CORE</h2>", unsafe_allow_html=True)
-    st.session_state.lang = st.radio("INTERFACE LANGUAGE", ["RU", "KZ", "EN"],
-                                     index=["RU", "KZ", "EN"].index(st.session_state.lang))
+    T = LANG_DATA[st.session_state.lang]
+
+    # --- SIDEBAR ---
+    with st.sidebar:
+        st.markdown("<h1 style='font-family:Orbitron; color:#00d1ff;'>🦅 BRM CORE</h1>", unsafe_allow_html=True)
+        st.session_state.lang = st.selectbox("🌐 LANGUAGE / ТІЛ", ["RU", "KZ"],
+                                             index=0 if st.session_state.lang == "RU" else 1)
+
+        st.divider()
+        st.write(f"### {T['access']}")
+        token = st.text_input("ENTER SYSTEM TOKEN", type="password", value="ADMIN_ALMATY_2026")
+
+        if st.button(T["refresh"]):
+            st.cache_data.clear()
+            st.toast("Синхронизация данных...")
+            time.sleep(1)
+            st.rerun()
+
+        st.markdown(f"""
+        <div style="background:rgba(0,255,170,0.1); padding:10px; border-left:3px solid #00ffaa; font-size:0.8rem;">
+            {T['sensor_health']}
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.divider()
+        st.caption(f"{T['footer']}")
+
+    # --- MAIN HEADER ---
+    col_h1, col_h2 = st.columns([3, 1])
+    with col_h1:
+        st.markdown(f"<div class='glitch-title'>{T['title']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#00d1ff; letter-spacing:3px; margin-top:-15px;'>{T['subtitle']}</p>",
+                    unsafe_allow_html=True)
+    with col_h2:
+        st.markdown(f"""
+            <div style="text-align:right;">
+                <h2 style="margin:0; color:#fff;">{datetime.now().strftime('%H:%M')}</h2>
+                <p style="color:#666;">{datetime.now().strftime('%d.%m.2026')}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # --- ВЕРХНИЕ МЕТРИКИ ---
+    df_now = engine.generate_realtime_metrics()
+    hist_df = engine.generate_historical_series()
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric(T["stat_traffic"], f"{df_now['Traffic_Index'].mean():.1f} / 10", delta="-0.5")
+    with m2:
+        st.metric(T["stat_aqi"], f"{int(df_now['AQI'].mean())} pts", delta="↑ 14", delta_color="inverse")
+    with m3:
+        st.metric(T["stat_temp"], f"{df_now['Temperature'].mean():.1f} °C", delta="↑ 1.2")
+    with m4:
+        st.metric(T["stat_energy"], f"{df_now['Energy_Cons'].sum()} MW", delta="Critical")
 
     st.divider()
-    st.write(f"**{T['access']}**")
-    st.text_input("Token", value="••••••••", type="password")
 
-    st.info(T["sensor_health"])
-    if st.button(T["refresh"]):
-        st.cache_data.clear()
-        st.rerun()
 
-# --- HEADER ---
-st.markdown(f"<p class='glitch-title'>{T['title']}</p>", unsafe_allow_html=True)
-st.markdown(
-    f"<p style='color:#00d1ff; letter-spacing:2px;'>{T['subtitle']} | {datetime.now().strftime('%H:%M:%S')}</p>",
-    unsafe_allow_html=True)
+    # --- ТАБЫ ---
+    tabs = st.tabs([
+        f"📊 {T['nav_dashboard']}",
+        f"🌱 {T['nav_eco']}",
+        f"⚡ {T['nav_grid']}",
+        f"🗺️ {T['nav_map']}",
+        f"🧠 {T['nav_ai']}",
+        f"📟 {T['nav_logs']}"
+    ])
 
-# --- TOP METRICS ---
-m1, m2, m3, m4 = st.columns(4)
-with m1: st.metric(T["stat_traffic"], f"{df['Traffic'].mean():.1f}/10", "-0.4")
-with m2: st.metric(T["stat_aqi"], f"{int(df['AQI'].mean())} pts", "12%", delta_color="inverse")
-with m3: st.metric(T["stat_temp"], f"{df['Temp'].mean():.1f}°C", "↑ 1.2")
-with m4: st.metric(T["stat_energy"], f"{int(df['Load'].mean())}%", "Critical", delta_color="off")
+    # --- TAB 1: DASHBOARD ---
+    # --- TAB 1: DASHBOARD ---
+    with tabs[0]:
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            st.subheader(T["chart_load"])
+            fig_load = go.Figure()
+            fig_load.add_trace(go.Scatter(
+                x=hist_df['Timestamp'], y=hist_df['Grid_Total'],
+                fill='tozeroy', line_color='#00d1ff', name="City Load"
+            ))
+            fig_load.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                   height=400)
+            st.plotly_chart(fig_load, use_container_width=True)
 
-st.divider()
+        with c2:
+            st.subheader(T["chart_traffic"])
+            fig_traffic = px.bar(
+                df_now.reset_index(), x="Район", y="Traffic_Index",
+                color="Traffic_Index", color_continuous_scale="Viridis"
+            )
+            fig_traffic.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', height=400)
+            st.plotly_chart(fig_traffic, use_container_width=True)
 
-# --- TABS ---
-tab_1, tab_2, tab_3, tab_4, tab_5 = st.tabs([
-    f"📊 {T['nav_dashboard']}", f"🌱 {T['nav_eco']}",
-    f"⚡ {T['nav_grid']}", f"🗺️ {T['nav_map']}", f"🧠 {T['nav_ai']}"
-])
+        # ИСПРАВЛЕННЫЙ БЛОК:
+        st.markdown("### 🧬 Детальная аналитика секторов")
+        # Убрали .style.background_gradient, чтобы не требовал matplotlib, и поправили синтаксис
+        st.dataframe(df_now, use_container_width=True)
+    # --- TAB 2: ECO MONITORING ---
+    with tabs[1]:
+        st.error(T["eco_alert"])
+        e1, e2, e3 = st.columns(3)
 
-# ТАБ 1: ДАШБОРД
-with tab_1:
-    col_left, col_right = st.columns([2, 1])
-    with col_left:
-        st.subheader(T["chart_load"])
-        fig_load = px.area(hist_df, x="Time", y="Load", color_discrete_sequence=['#00d1ff'])
-        fig_load.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_load, use_container_width=True)
+        with e1:
+            st.write("#### PM2.5 (Мелкие частицы)")
+            fig_pm = px.treemap(df_now, path=["Район"], values="PM25", color="PM25", color_continuous_scale="Reds")
+            st.plotly_chart(fig_pm, use_container_width=True)
 
-    with col_right:
-        st.subheader(T["chart_traffic"])
-        fig_bar = px.bar(df.reset_index(), x="Район", y="Traffic", color="Traffic", color_continuous_scale="Viridis")
-        fig_bar.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_bar, use_container_width=True)
+        with e2:
+            st.write("#### NO2 (Диоксид азота)")
+            fig_no2 = go.Figure(go.Scatterpolar(
+                r=df_now['NO2'], theta=df_now['Район'], fill='toself', line_color='#7000ff'
+            ))
+            fig_no2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_no2, use_container_width=True)
 
-# ТАБ 2: ЭКОЛОГИЯ
-with tab_2:
-    st.warning(T["eco_alert"])
-    e1, e2 = st.columns(2)
-    with e1:
-        st.write(f"### {T['pm25_desc']}")
-        fig_pm = px.treemap(df.reset_index(), path=["Район"], values="PM25", color="PM25",
-                            color_continuous_scale="Reds")
-        st.plotly_chart(fig_pm, use_container_width=True)
-    with e2:
-        st.write(f"### {T['no2_desc']}")
-        fig_no2 = px.line_polar(df.reset_index(), r="NO2", theta="Район", line_close=True)
-        fig_no2.update_traces(fill='toself', line_color='#7000ff')
-        fig_no2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_no2, use_container_width=True)
+        with e3:
+            st.write("#### Влажность %")
+            fig_hum = px.funnel(df_now.sort_values("Humidity"), y="Район", x="Humidity")
+            st.plotly_chart(fig_hum, use_container_width=True)
 
-# ТАБ 3: ЭНЕРГОСЕТЬ
-with tab_3:
-    st.subheader(T["voltage_stable"])
-    fig_v = go.Figure()
-    fig_v.add_trace(
-        go.Scatter(x=df.index, y=df['Voltage'], mode='lines+markers', name='VAC', line=dict(color='#00ff00')))
-    fig_v.add_hline(y=220, line_dash="dash", line_color="white")
-    fig_v.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_v, use_container_width=True)
+    # --- TAB 3: POWER GRID ---
+    with tabs[2]:
+        st.subheader("⚡ Статус узловых подстанций")
+        grid_cols = st.columns(4)
+        for i, row in df_now.iterrows():
+            with grid_cols[i % 4]:
+                st.write(f"**{row['Район']}**")
+                st.progress(int(row['Grid_Load']))
+                st.caption(f"Напряжение: {row['Voltage']}V | Нагрузка: {row['Grid_Load']}%")
+                if row['Grid_Load'] > 90:
+                    st.warning("ПЕРЕГРУЗКА")
 
-    st.subheader(T["substation_status"])
-    cols = st.columns(4)
-    for i, district in enumerate(DISTRICTS[:4]):
-        with cols[i]:
-            val = df.loc[district, "Load"]
-            st.write(f"**{district}**")
-            st.progress(int(val))
-            st.caption(f"{val}% Capacity")
+    # --- TAB 4: EVENT MAP ---
+    with tabs[3]:
+        st.subheader("🗺️ Геопространственный мониторинг (Folium)")
+        m = folium.Map(location=[43.2389, 76.9455], zoom_start=12, tiles="CartoDB dark_matter")
 
-# ТАБ 4: КАРТА
-with tab_4:
-    st.subheader("Interactive Folium Layer")
-    m = folium.Map(location=[43.2389, 76.9455], zoom_start=12, tiles="CartoDB dark_matter")
+        # Heatmap
+        heat_data = [[v[0], v[1], random.uniform(0.5, 1)] for k, v in DISTRICT_COORDS.items()]
+        HeatMap(heat_data, radius=25).add_to(m)
 
-    # Тепловая карта на основе AQI
-    h_data = [[43.23, 76.94, 0.8], [43.25, 76.90, 0.9], [43.30, 76.95, 0.5]]
-    HeatMap(h_data).add_to(m)
+        # Инциденты
+        for d, coord in DISTRICT_COORDS.items():
+            folium.CircleMarker(
+                location=coord,
+                radius=random.randint(5, 15),
+                popup=f"Район: {d}\nAQI: {random.randint(50, 200)}",
+                color="#00d1ff",
+                fill=True,
+                fill_opacity=0.6
+            ).add_to(m)
 
-    # Маркеры инцидентов
-    for _, row in geo_df.iterrows():
-        folium.CircleMarker(
-            location=[row['lat'], row['lon']],
-            radius=10,
-            color="red" if row['level'] == "Critical" else "orange",
-            fill=True,
-            popup=row['type']
-        ).add_to(m)
+        folium_static(m, width=1200, height=600)
 
-    folium_static(m, width=1200, height=600)
+    # --- TAB 5: AI CORE ---
+    with tabs[4]:
+        prediction = engine.get_ai_predictions()
+        st.markdown(f"""
+        <div class="ai-card">
+            <div class="ai-card-content">
+                <h2 style="color:#7000ff; font-family:Orbitron;">{T['ai_report_title']}</h2>
+                <hr style="border-color:#222;">
+                <div style="display:flex; justify-content:space-between;">
+                    <div>
+                        <p><b>СТАТУС РИСКА:</b> <span style="color:#ff4b4b;">{prediction['risk_level']}</span></p>
+                        <p><b>ANOMALY SCORE:</b> {prediction['anomaly_score']}</p>
+                        <p><b>ОЖИДАЕМЫЙ ПИК:</b> {prediction['peak_hour']}</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2103/2103633.png" width="80" style="filter:invert(1);">
+                    </div>
+                </div>
+                <h4 style="color:#00d1ff; margin-top:20px;">{T['ai_rec']}:</h4>
+                <ul>
+                    {"".join([f"<li>{r}</li>" for r in prediction['recommendations']])}
+                </ul>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-# ТАБ 5: ЯДРО ИИ
-with tab_5:
-    st.markdown(f"""
-    <div class="ai-card">
-        <h2 style="color:#00d1ff; font-family:Orbitron;">{T['ai_report_title']}</h2>
-        <hr style="border-color:#333;">
-        <p><b>{T['ai_anomaly']}:</b> 03</p>
-        <ul>
-            <li>Район {df['AQI'].idxmax()}: Превышение нормы загрязнения на {int(df['AQI'].max() - 100)}%.</li>
-            <li>Энергоузел {df['Load'].idxmax()}: Обнаружен перегрев трансформатора.</li>
-            <li>Трафик: Зафиксирована аномальная плотность на пр. Аль-Фараби.</li>
-        </ul>
-        <p style="background:rgba(0,209,255,0.1); padding:15px; border-left:4px solid #00d1ff;">
-            <b>{T['ai_rec']}:</b> Перенаправить 15% мощностей с ТЭЦ-1 на северный узел. Активировать систему очистки воздуха в Медеуском районе.
-        </p>
-        <br>
-        <button style="width:100%; height:40px; border-radius:10px; border:none; background:#7000ff; color:white; font-weight:bold; cursor:pointer;">
-            {T['ai_log_btn']}
-        </button>
-    </div>
-    """, unsafe_allow_html=True)
+        # Граф нейроактивности
+        st.write("#### Нейросетевая активность (Live Stream)")
+        nodes_x = np.random.randn(20)
+        nodes_y = np.random.randn(20)
+        fig_ai = px.scatter(x=nodes_x, y=nodes_y, size=np.random.rand(20) * 50, color=nodes_x, template="plotly_dark")
+        fig_ai.update_layout(xaxis_visible=False, yaxis_visible=False, paper_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_ai, use_container_width=True)
 
-    # Визуализация графа нейросети
-    st.write("#### Neural Path Activity")
-    nodes = np.random.rand(15, 2)
-    fig_ai = px.scatter(nodes, x=0, y=1, size_max=60, template="plotly_dark")
-    fig_ai.update_traces(marker=dict(color='#00d1ff', symbol='hexagram'))
-    fig_ai.update_layout(xaxis_visible=False, yaxis_visible=False)
-    st.plotly_chart(fig_ai, use_container_width=True)
+    # --- TAB 6: LOGS ---
+    with tabs[5]:
+        st.subheader("📟 Вывод системной консоли")
+        log_data = [
+            f"[{datetime.now() - timedelta(seconds=i * 10)}] INFO: Пакет данных от узла {random.choice(DISTRICTS)} получен."
+            for i in range(50)
+        ]
+        st.code("\n".join(log_data), language="bash")
 
-# --- FOOTER ---
-st.divider()
-st.markdown(f"<div style='text-align:center; color:#555;'>{T['footer']}</div>", unsafe_allow_html=True)
-st.markdown(f"<marquee>{T['sys_online']}</marquee>", unsafe_allow_html=True)
+    # --- FOOTER ---
+    st.divider()
+    st.markdown(f"<marquee scrollamount='10'>{T['sys_online']}</marquee>", unsafe_allow_html=True)
+
+
+if __name__ == "__main__":
+    main()
